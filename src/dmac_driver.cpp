@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
   dmac::tcp_client *s = NULL;
   
   if (type == "TCP/IP") {
-      ros::param::param<std::string>(ros::this_node::getName() + "/modem_config/tcp_config/ip", IP, "192.168.6.2");
+      ros::param::param<std::string>(ros::this_node::getName() + "/modem_config/tcp_config/ip", IP, "192.168.0.137");
       ros::param::param<int>(ros::this_node::getName() + "/modem_config/tcp_config/port", port, 9200);
       
       ROS_INFO_STREAM("Connecting to IP: " << IP << ", port: " << port);
