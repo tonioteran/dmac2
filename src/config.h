@@ -102,7 +102,7 @@ class config
       
       /* add ctrl, local address */
       for (mit = ini.begin(); mit != ini.end(); ++mit) {
-          pushSync(mit->first,mit->second);
+          pushSync(mit->first, mit->second);
       }
     }
 
