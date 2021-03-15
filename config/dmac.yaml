@@ -1,0 +1,9 @@
+evologics_modem:
+  modem_config:
+    connection_type: TCP/IP
+      tcp_config:
+        ip: 192.168.6.2
+        port: 9200
+    hasAHRS: false
+    source_level: 3
+    local_address: 1

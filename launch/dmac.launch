@@ -1,0 +1,9 @@
+<launch>
+
+    <!-- Do not change node names, as the parameter depends on them -->
+    <rosparam command="load" file="$(find dmac)/config/dmac.yaml"/>
+
+    <!-- Do not change node names, as the parameter depends on them -->
+    <node pkg="dmac" type="dmac" name="evologics_modem" output="screen"/>
+
+</launch>
