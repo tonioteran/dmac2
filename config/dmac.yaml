@@ -1,9 +1,13 @@
 evologics_modem:
   modem_config:
-    connection_type: TCP/IP
+    # Connection can be TCP/IP or SERIAL
+    connection_type: 'TCP/IP'
+    connection_type:
       tcp_config:
         ip: 192.168.6.2
         port: 9200
-    hasAHRS: false
-    source_level: 3
-    local_address: 1
+      serial_config:
+        baudrate: 19200
+      hasAHRS: false
+      source_level: 3
+      local_address: 1
