@@ -1,5 +1,5 @@
 # dmac
-ROS driver for the Evologics Underwater Modems
+ROS2 driver for the Evologics Underwater Modems
 
 ## Basic commands
 
