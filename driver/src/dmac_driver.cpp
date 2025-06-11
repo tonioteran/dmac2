@@ -29,16 +29,13 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
-
-#include <ros/ros.h>
-
-
 #include <sstream>
 
 #include "comm_middlemen.h"
-#include "tcp_client.h"
-#include "serial_client.h"
 #include "config.h"
+#include "rclcpp/rclcpp.hpp"
+#include "serial_client.h"
+#include "tcp_client.h"
 
 namespace std {
     template<typename T>

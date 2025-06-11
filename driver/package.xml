@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>dmac2</name>
+  <version>0.0.0</version>
+  <description>EvoLogics D-MAC ROS2 driver</description>
+  <maintainer email="teran@duck.com">tonito</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+
+  <!--TODO: From previous ROS... What do I do with these?-->
+  <!--<build_depend>roscpp</build_depend>-->
+  <!--<build_depend>rospy</build_depend>-->
+  <!--<build_depend>std_msgs</build_depend>-->
+  <!--<build_depend>message_generation</build_depend>-->
+
+  <!--TODO: From previous ROS... What do I do with these?-->
+  <!--<run_depend>message_runtime</run_depend>-->
+  <!--<run_depend>roscpp</run_depend>-->
+  <!--<run_depend>rospy</run_depend>-->
+  <!--<run_depend>std_msgs</run_depend>-->
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

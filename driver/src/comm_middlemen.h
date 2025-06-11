@@ -29,13 +29,12 @@
 #ifndef DMAC_COMM_MIDDLEMEN_H
 #define DMAC_COMM_MIDDLEMEN_H
 
-#include <iostream>
-#include <boost/bind.hpp>
 #include <boost/asio.hpp>
-
-#include <ros/ros.h>
+#include <boost/bind.hpp>
+#include <iostream>
 
 #include "comm_middlemen.h"
+#include "rclcpp/rclcpp.hpp"
 
 using boost::asio::ip::tcp;
 
