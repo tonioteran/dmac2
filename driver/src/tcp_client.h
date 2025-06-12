@@ -41,8 +41,7 @@
 
 using boost::asio::ip::tcp;
 
-namespace dmac
-{
+namespace dmac {
 
 typedef enum { DISCONNECTED = 0, WAITING = 1, CONNECTED = 2 } connection_state;
 
@@ -74,7 +73,8 @@ class tcp_client : public dmac::comm_middlemen {
   void do_close() {
     /* FIXME: what to do if data arrives when socket is closed? */
     if (state_ == DISCONNECTED) {
-      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "already closed...");
+      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"),
+                         "already closed...");
     } else {
       RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"),
                          "connection closed...");
@@ -98,7 +98,8 @@ class tcp_client : public dmac::comm_middlemen {
                       boost::asio::placeholders::error,
                       boost::asio::placeholders::bytes_transferred));
     } else {
-      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "cannot send, not connected");
+      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"),
+                         "cannot send, not connected");
     }
   }
 
@@ -121,7 +122,8 @@ class tcp_client : public dmac::comm_middlemen {
                       boost::asio::placeholders::error,
                       boost::asio::placeholders::bytes_transferred));
     } else {
-      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "do_close by " << __func__);
+      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"),
+                         "do_close by " << __func__);
       do_close();
     }
   }
@@ -129,7 +131,8 @@ class tcp_client : public dmac::comm_middlemen {
   void handle_write(const boost::system::error_code &error,
                     std::size_t bytes_transferred) {
     if (error) {
-      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "do_close by " << __func__);
+      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"),
+                         "do_close by " << __func__);
       do_close();
     }
   }
@@ -146,7 +149,8 @@ class tcp_client : public dmac::comm_middlemen {
                       boost::asio::placeholders::error,
                       boost::asio::placeholders::bytes_transferred));
     } else {
-      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "do_close by " << __func__);
+      RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"),
+                         "do_close by " << __func__);
       do_close();
     }
   }
@@ -160,8 +164,8 @@ class tcp_client : public dmac::comm_middlemen {
   size_t capacity_;
   std::vector<uint8_t> mem_;
   dmac::parser parser_;
-  };
+};
 
-} // namespace
+}  // namespace dmac
 
-#endif // DMAC_TCP_CLIENT_H
+#endif  // DMAC_TCP_CLIENT_H

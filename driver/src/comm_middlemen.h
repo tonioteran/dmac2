@@ -38,15 +38,13 @@
 
 using boost::asio::ip::tcp;
 
-namespace dmac
-{
+namespace dmac {
 
-  class comm_middlemen
-  {
-  public:
-    virtual void send(std::string &message) = 0;
-  };
+class comm_middlemen {
+ public:
+  virtual void send(std::string &message) = 0;
+};
 
-}
+}  // namespace dmac
 
-#endif // DMAC_TCP_CLIENT_H
+#endif  // DMAC_TCP_CLIENT_H

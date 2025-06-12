@@ -44,148 +44,140 @@
 
 typedef boost::shared_ptr<boost::asio::serial_port> serial_port_ptr;
 
-namespace dmac
-{
+namespace dmac {
 namespace {
 constexpr char kLoggerName[] = "dmac2_logger";
 }  // namespace
 
-    class serial_client : public dmac::comm_middlemen
-    {
-    public:
-        serial_client(boost::asio::io_service &io_service, dmac::config &config)
-            : io_service_(io_service),
-              reconnect_timer_(io_service),
-              capacity_(4096),
-              parser_(io_service, config, this)
-        {
-            mem_.resize(capacity_);
-            config.load();
-            parser_.ctrl(dmac::EOL, "\r");
-            connect();
-        }
+class serial_client : public dmac::comm_middlemen {
+ public:
+  serial_client(boost::asio::io_service &io_service, dmac::config &config)
+      : io_service_(io_service),
+        reconnect_timer_(io_service),
+        capacity_(4096),
+        parser_(io_service, config, this) {
+    mem_.resize(capacity_);
+    config.load();
+    parser_.ctrl(dmac::EOL, "\r");
+    connect();
+  }
 
-        ~serial_client()
-        {
-            if (port_)
-            {
-                port_->cancel();
-                port_->close();
-                port_.reset();
-            }
-            io_service_.stop();
-            io_service_.reset();
-        }
+  ~serial_client() {
+    if (port_) {
+      port_->cancel();
+      port_->close();
+      port_.reset();
+    }
+    io_service_.stop();
+    io_service_.reset();
+  }
 
-        void do_close()
-        {
-            RCLCPP_WARN_STREAM(rclcpp::get_logger(kLoggerName), "connection closed...");
-            parser_.disconnected();
-            if (port_)
-            {
-                port_->cancel();
-                port_->close();
-                port_.reset();
-            }
-            reconnect_timer_.cancel();
-            reconnect_timer_.expires_from_now(boost::posix_time::milliseconds(1000));
-            reconnect_timer_.async_wait(boost::bind(&serial_client::reconnect_timeout, this,
-                                                    boost::asio::placeholders::error));
-        }
+  void do_close() {
+    RCLCPP_WARN_STREAM(rclcpp::get_logger(kLoggerName), "connection closed...");
+    parser_.disconnected();
+    if (port_) {
+      port_->cancel();
+      port_->close();
+      port_.reset();
+    }
+    reconnect_timer_.cancel();
+    reconnect_timer_.expires_from_now(boost::posix_time::milliseconds(1000));
+    reconnect_timer_.async_wait(boost::bind(&serial_client::reconnect_timeout,
+                                            this,
+                                            boost::asio::placeholders::error));
+  }
 
-        void reconnect_timeout(const boost::system::error_code &error)
-        {
-            if (error == boost::asio::error::operation_aborted)
-            {
-                return;
-            }
-            RCLCPP_INFO_STREAM(rclcpp::get_logger(kLoggerName), "reconnecting");
-            connect();
-        }
+  void reconnect_timeout(const boost::system::error_code &error) {
+    if (error == boost::asio::error::operation_aborted) {
+      return;
+    }
+    RCLCPP_INFO_STREAM(rclcpp::get_logger(kLoggerName), "reconnecting");
+    connect();
+  }
 
-        void connect()
-        {
-            if (port_)
-            {
-                RCLCPP_WARN_STREAM(rclcpp::get_logger(kLoggerName), "error : port is already opened...");
-                do_close();
-                return;
-            }
+  void connect() {
+    if (port_) {
+      RCLCPP_WARN_STREAM(rclcpp::get_logger(kLoggerName),
+                         "error : port is already opened...");
+      do_close();
+      return;
+    }
 
-            std::string portname;
-            ros::param::param<std::string>(ros::this_node::getName() + "/modem_config/serial_config/port", portname, "/dev/ttyUSB0");
+    std::string portname;
+    ros::param::param<std::string>(
+        ros::this_node::getName() + "/modem_config/serial_config/port",
+        portname, "/dev/ttyUSB0");
 
-            port_ = serial_port_ptr(new boost::asio::serial_port(io_service_));
-            boost::system::error_code ec;
-            port_->open(portname, ec);
-            if (ec)
-            {
-                RCLCPP_WARN_STREAM(rclcpp::get_logger(kLoggerName), "error : port_->open() failed... portname=" << portname << ", e=" << ec.message().c_str());
-                do_close();
-                return;
-            }
+    port_ = serial_port_ptr(new boost::asio::serial_port(io_service_));
+    boost::system::error_code ec;
+    port_->open(portname, ec);
+    if (ec) {
+      RCLCPP_WARN_STREAM(rclcpp::get_logger(kLoggerName),
+                         "error : port_->open() failed... portname="
+                             << portname << ", e=" << ec.message().c_str());
+      do_close();
+      return;
+    }
 
-            int baudrate;
-            ros::param::param<int>(ros::this_node::getName() + "/modem_config/serial_config/baudrate", baudrate, 19200);
-            port_->set_option(boost::asio::serial_port_base::baud_rate(baudrate));
-            port_->set_option(boost::asio::serial_port_base::character_size(8));
-            port_->set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
-            port_->set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
-            port_->set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::none));
+    int baudrate;
+    ros::param::param<int>(
+        ros::this_node::getName() + "/modem_config/serial_config/baudrate",
+        baudrate, 19200);
+    port_->set_option(boost::asio::serial_port_base::baud_rate(baudrate));
+    port_->set_option(boost::asio::serial_port_base::character_size(8));
+    port_->set_option(boost::asio::serial_port_base::stop_bits(
+        boost::asio::serial_port_base::stop_bits::one));
+    port_->set_option(boost::asio::serial_port_base::parity(
+        boost::asio::serial_port_base::parity::none));
+    port_->set_option(boost::asio::serial_port_base::flow_control(
+        boost::asio::serial_port_base::flow_control::none));
 
-            parser_.connected();
-            port_->async_read_some(
-                boost::asio::buffer(&mem_[0], capacity_),
-                boost::bind(
-                    &serial_client::on_receive_,
-                    this, boost::asio::placeholders::error,
+    parser_.connected();
+    port_->async_read_some(
+        boost::asio::buffer(&mem_[0], capacity_),
+        boost::bind(&serial_client::on_receive_, this,
+                    boost::asio::placeholders::error,
                     boost::asio::placeholders::bytes_transferred));
-        }
+  }
 
-        void on_receive_(const boost::system::error_code &ec, size_t bytes_transferred)
-        {
-            if (!ec)
-            {
-                parser_.to_term(mem_, bytes_transferred);
-                port_->async_read_some(
-                    boost::asio::buffer(&mem_[0], capacity_),
-                    boost::bind(
-                        &serial_client::on_receive_,
-                        this, boost::asio::placeholders::error,
-                        boost::asio::placeholders::bytes_transferred));
-            }
-            else
-            {
-                do_close();
-            }
-        }
+  void on_receive_(const boost::system::error_code &ec,
+                   size_t bytes_transferred) {
+    if (!ec) {
+      parser_.to_term(mem_, bytes_transferred);
+      port_->async_read_some(
+          boost::asio::buffer(&mem_[0], capacity_),
+          boost::bind(&serial_client::on_receive_, this,
+                      boost::asio::placeholders::error,
+                      boost::asio::placeholders::bytes_transferred));
+    } else {
+      do_close();
+    }
+  }
 
-        void handle_write(const boost::system::error_code &error, std::size_t bytes_transferred)
-        {
-            if (error)
-            {
-                do_close();
-            }
-        }
+  void handle_write(const boost::system::error_code &error,
+                    std::size_t bytes_transferred) {
+    if (error) {
+      do_close();
+    }
+  }
 
-        void send(std::string &msg)
-        {
-            port_->async_write_some(
-                boost::asio::buffer(msg, msg.length()),
-                boost::bind(&serial_client::handle_write, this,
-                            boost::asio::placeholders::error,
-                            boost::asio::placeholders::bytes_transferred));
-        }
+  void send(std::string &msg) {
+    port_->async_write_some(
+        boost::asio::buffer(msg, msg.length()),
+        boost::bind(&serial_client::handle_write, this,
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred));
+  }
 
-    private:
-        boost::asio::io_service &io_service_;
-        boost::asio::deadline_timer reconnect_timer_;
-        serial_port_ptr port_;
-        size_t capacity_;
-        std::vector<uint8_t> mem_;
-        dmac::parser parser_;
-    };
+ private:
+  boost::asio::io_service &io_service_;
+  boost::asio::deadline_timer reconnect_timer_;
+  serial_port_ptr port_;
+  size_t capacity_;
+  std::vector<uint8_t> mem_;
+  dmac::parser parser_;
+};
 
-} // namespace
+}  // namespace dmac
 
-#endif // DMAC_SERIAL_CLIENT_H
+#endif  // DMAC_SERIAL_CLIENT_H

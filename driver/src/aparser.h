@@ -29,53 +29,31 @@
 #ifndef DMAC_APARSER_H
 #define DMAC_APARSER_H
 
-//#include "dmac/DMACAsync.h"
+#include "dmac2_interfaces/msg/dmac_async.hpp"
 
 using dmac2_interfaces::msg::DMACSync;
 
-namespace dmac
-{
+namespace dmac {
 
-  typedef enum
-  {
-    DMAC_UNDEF = 0,
-    DMAC_READY = 1
-  } dmac_filter_state;
-  typedef enum
-  {
-    DMAC_UNKNOWN = 0,
-    DMAC_AT = 1,
-    DMAC_NET = 2
-  } dmac_filter_type;
-  typedef enum
-  {
-    DMAC_DATA_MODE = 0,
-    DMAC_COMMAND_MODE = 1
-  } dmac_filter_mode;
-  typedef enum
-  {
-    WAITSYNC_NO = 0,
-    WAITSYNC_SINGLELINE = 1,
-    WAITSYNC_MULTILINE = 2,
-    WAITSYNC_BINARY = 3
-  } dmac_waitsync_status;
+typedef enum { DMAC_UNDEF = 0, DMAC_READY = 1 } dmac_filter_state;
+typedef enum { DMAC_UNKNOWN = 0, DMAC_AT = 1, DMAC_NET = 2 } dmac_filter_type;
+typedef enum { DMAC_DATA_MODE = 0, DMAC_COMMAND_MODE = 1 } dmac_filter_mode;
+typedef enum {
+  WAITSYNC_NO = 0,
+  WAITSYNC_SINGLELINE = 1,
+  WAITSYNC_MULTILINE = 2,
+  WAITSYNC_BINARY = 3
+} dmac_waitsync_status;
 
-  typedef enum
-  {
-    WAITSYNC = 0,
-    MODE = 1,
-    FILTER = 2,
-    EOL = 3
-  } parser_state_ctrl;
+typedef enum { WAITSYNC = 0, MODE = 1, FILTER = 2, EOL = 3 } parser_state_ctrl;
 
-  class abstract_parser
-  {
-  public:
-    virtual void ctrl(parser_state_ctrl ctrl, int value) = 0;
-    virtual void syncCallback(const DMACSync::ConstPtr &msg, bool privilege) = 0;
-    virtual void syncCallback(const DMACSync::ConstPtr &msg) = 0;
-  };
+class abstract_parser {
+ public:
+  virtual void ctrl(parser_state_ctrl ctrl, int value) = 0;
+  virtual void syncCallback(const DMACSync::ConstPtr &msg, bool privilege) = 0;
+  virtual void syncCallback(const DMACSync::ConstPtr &msg) = 0;
+};
 
-} // namespace
+}  // namespace dmac
 
 #endif /* DMAC_APARSER_H */
