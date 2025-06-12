@@ -15,6 +15,7 @@
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>dmac2_interfaces</depend>
 
   <!--TODO: From previous ROS... What do I do with these?-->
   <!--<build_depend>roscpp</build_depend>-->

@@ -31,29 +31,26 @@
 
 #include <math.h>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/regex.hpp>
 #include <iostream>
 #include <sstream>
 
-#include <boost/regex.hpp>
-#include <boost/algorithm/string.hpp>
-
-#include <ros/ros.h>
-
-#include "dmac/DMACPayload.h"
-#include "dmac/DMACAsync.h"
-#include "dmac/DMACSync.h"
-#include "dmac/mUSBLFix.h"
-#include "diagnostic_msgs/KeyValue.h"
-
+#include "aparser.h"
 #include "comm_middlemen.h"
 #include "config.h"
-#include "aparser.h"
+#include "diagnostic_msgs/msg/key_value.hpp"
+#include "dmac2_interfaces/msg/dmac_async.hpp"
+#include "dmac2_interfaces/msg/dmac_payload.hpp"
+#include "dmac2_interfaces/msg/dmac_sync.hpp"
+#include "dmac2_interfaces/msg/musbl_fix.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 using boost::asio::ip::tcp;
-using dmac::DMACAsync;
-using dmac::DMACPayload;
-using dmac::DMACSync;
-using dmac::mUSBLFix;
+using dmac2_interfaces::msg::DMACAsync;
+using dmac2_interfaces::msg::DMACPayload;
+using dmac2_interfaces::msg::DMACSync;
+using dmac2_interfaces::msg::MUSBLFix;
 
 namespace dmac
 {
@@ -143,14 +140,14 @@ namespace dmac
 
         void connected(void)
         {
-            ROS_INFO_STREAM("ini: connected");
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "ini: connected");
             initializer_it = config_->initializer_begin();
             handle_event(INTERNAL);
         }
 
         void disconnected(void)
         {
-            ROS_INFO_STREAM("ini: disconnected");
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "ini: disconnected");
             state_ = IDLE;
         }
 
@@ -287,10 +284,10 @@ namespace dmac
                 break;
                 break;
             default:
-                ROS_ERROR_STREAM("Alarm, unexpected state: " << state_);
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Alarm, unexpected state: " << state_);
                 break;
             }
-            ROS_INFO_STREAM("(" << conf_state_str(state_) << ") -> "
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "(" << conf_state_str(state_) << ") -> "
                                 << conf_event_str(event) << " -> ("
                                 << conf_state_str(next_state) << ")");
             return next_state;
@@ -325,7 +322,7 @@ namespace dmac
                     event = handle_final<Msg>(event, msg);
                     break;
                 default:
-                    ROS_ERROR_STREAM("Alarm, unexpected state: " << state_);
+                    RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Alarm, unexpected state: " << state_);
                     break;
                 }
             }
@@ -335,7 +332,7 @@ namespace dmac
         conf_event handle_idle(conf_event event, Msg *msg)
         {
             conf_event next_event = EPS;
-            ROS_INFO_STREAM("Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
             switch (event)
             {
             case INTERNAL:
@@ -352,7 +349,7 @@ namespace dmac
                 break;
             }
             default:
-                ROS_ERROR_STREAM("Unexpected event " << conf_event_str(event) << " in state " << conf_state_str(state_));
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Unexpected event " << conf_event_str(event) << " in state " << conf_state_str(state_));
             }
             return next_event;
         }
@@ -361,7 +358,7 @@ namespace dmac
         conf_event handle_final(conf_event event, Msg *msg)
         {
             conf_event next_event = EPS;
-            ROS_INFO_STREAM("Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
             return next_event;
         }
 
@@ -369,7 +366,7 @@ namespace dmac
         conf_event handle_request_mode(conf_event event, Msg *msg)
         {
             conf_event next_event = EPS;
-            ROS_INFO_STREAM("Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
             switch (event)
             {
             case ERROR:
@@ -384,7 +381,7 @@ namespace dmac
                 break;
             }
             default:
-                ROS_ERROR_STREAM("Unexpected event " << conf_event_str(event) << " in state " << conf_state_str(state_));
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Unexpected event " << conf_event_str(event) << " in state " << conf_state_str(state_));
             }
             return next_event;
         }
@@ -393,14 +390,14 @@ namespace dmac
         conf_event handle_mode(conf_event event, Msg *msg)
         {
             conf_event next_event = EPS;
-            ROS_INFO_STREAM("Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
             switch (event)
             {
             case RCV:
             {
                 if (DMACSync *sync = dynamic_cast<DMACSync *>(msg))
                 {
-                    ROS_INFO_STREAM("command " << sync->command << ", report: " << sync->report);
+                    RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "command " << sync->command << ", report: " << sync->report);
                     if (sync->command.compare("?MODE") == 0 && sync->report.compare(0, 2, "AT") == 0)
                     {
                         DMACSyncPtr sync(new DMACSync);
@@ -418,18 +415,18 @@ namespace dmac
                     }
                     else
                     {
-                        ROS_ERROR_STREAM("WRONG_RCV: " << sync->report);
+                        RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "WRONG_RCV: " << sync->report);
                         next_event = WRONG_RCV;
                     }
                 }
                 else
                 {
-                    ROS_ERROR_STREAM("Cast to DMACSync failed");
+                    RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Cast to DMACSync failed");
                 }
                 break;
             }
             default:
-                ROS_ERROR_STREAM("Unexpected event " << conf_event_str(event) << " in state " << conf_state_str(state_));
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Unexpected event " << conf_event_str(event) << " in state " << conf_state_str(state_));
             }
             return next_event;
         }
@@ -438,7 +435,7 @@ namespace dmac
         conf_event handle_yar(conf_event event, Msg *msg)
         {
             conf_event next_event = EPS;
-            ROS_INFO_STREAM("Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "Handling " << conf_event_str(event) << " in state " << conf_state_str(state_));
             switch (event)
             {
             case YAR:
@@ -465,18 +462,18 @@ namespace dmac
                     }
                     else
                     {
-                        ROS_ERROR_STREAM("WRONG_RCV: " << sync->report);
+                        RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "WRONG_RCV: " << sync->report);
                         next_event = WRONG_RCV;
                     }
                 }
                 else
                 {
-                    ROS_ERROR_STREAM("Failed dynamic cast of msg " << msg);
+                    RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Failed dynamic cast of msg " << msg);
                 }
                 break;
             }
             default:
-                ROS_ERROR_STREAM("Unexpected event " << conf_event_str(event) << " in state " << conf_state_str(state_));
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Unexpected event " << conf_event_str(event) << " in state " << conf_state_str(state_));
             }
             return next_event;
         }

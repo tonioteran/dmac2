@@ -31,34 +31,31 @@
 
 #include <math.h>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/regex.hpp>
 #include <iostream>
 #include <sstream>
 
-#include <boost/regex.hpp>
-#include <boost/algorithm/string.hpp>
-
-#include <ros/ros.h>
-
-#include "dmac/DMACPayload.h"
-#include "dmac/DMACRaw.h"
-#include "dmac/DMACAsync.h"
-#include "dmac/DMACSync.h"
-#include "dmac/DMACClock.h"
-#include "dmac/mUSBLFix.h"
-#include "diagnostic_msgs/KeyValue.h"
-
+#include "aparser.h"
 #include "comm_middlemen.h"
 #include "config.h"
+#include "diagnostic_msgs/msg/key_value.hpp"
+#include "dmac2_interfaces/msg/dmac_async.hpp"
+#include "dmac2_interfaces/msg/dmac_clock.hpp"
+#include "dmac2_interfaces/msg/dmac_payload.hpp"
+#include "dmac2_interfaces/msg/dmac_raw.hpp"
+#include "dmac2_interfaces/msg/dmac_sync.hpp"
+#include "dmac2_interfaces/msg/musbl_fix.hpp"
 #include "initializer.h"
-#include "aparser.h"
+#include "rclcpp/rclcpp.hpp"
 
 using boost::asio::ip::tcp;
-using dmac::DMACAsync;
-using dmac::DMACClock;
-using dmac::DMACPayload;
-using dmac::DMACRaw;
-using dmac::DMACSync;
-using dmac::mUSBLFix;
+using dmac2_interfaces::msg::DMACAsync;
+using dmac2_interfaces::msg::DMACClock;
+using dmac2_interfaces::msg::DMACPayload;
+using dmac2_interfaces::msg::DMACRaw;
+using dmac2_interfaces::msg::DMACSync;
+using dmac2_interfaces::msg::MUSBLFix;
 
 namespace dmac
 {
@@ -85,7 +82,7 @@ namespace dmac
             pub_async_ = nh_.advertise<DMACAsync>(config.nodeName() + "/async", 100);
             pub_clock_ = nh_.advertise<DMACClock>(config.nodeName() + "/clock", 100);
             pub_raw_ = nh_.advertise<DMACRaw>(config.nodeName() + "/raw", 100);
-            pub_usblfix_ = nh_.advertise<mUSBLFix>(config.nodeName() + "/measurement/usbl_fix", 100);
+            pub_usblfix_ = nh_.advertise<MUSBLFix>(config.nodeName() + "/measurement/usbl_fix", 100);
             pub_sync_ = nh_.advertise<DMACSync>(config.nodeName() + "/sync", 100);
             sub_sync_ = nh_.subscribe(config.nodeName() + "/sync", 100, &parser::syncCallback, this);
             sub_send_ = nh_.subscribe(config.nodeName() + "/send", 100, &parser::sendCallback, this);
@@ -100,7 +97,7 @@ namespace dmac
                 eol_ = value;
                 break;
             default:
-                ROS_ERROR_STREAM("Unsupported ctrl: " << ctrl);
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Unsupported ctrl: " << ctrl);
             }
         }
 
@@ -124,7 +121,7 @@ namespace dmac
                 break;
             }
             default:
-                ROS_ERROR_STREAM("Unsupported ctrl: " << ctrl);
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Unsupported ctrl: " << ctrl);
             }
         }
 
@@ -149,9 +146,9 @@ namespace dmac
             {
                 schunk.insert(schunk.end(), *it);
             }
-            ROS_INFO_STREAM("Parsing new data(" << mode_ << "): " << schunk);
-            ROS_INFO_STREAM("waitsync_ : " << waitsync_);
-            ROS_INFO_STREAM("more_: " << more_);
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "Parsing new data(" << mode_ << "): " << schunk);
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "waitsync_ : " << waitsync_);
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "more_: " << more_);
             more_ += schunk;
             publishRaw(schunk);
 
@@ -175,7 +172,7 @@ namespace dmac
         {
             if (!ini_.ready())
             {
-                ROS_ERROR_STREAM("Driver not yet initialized");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Driver not yet initialized");
                 publishSync("ERROR NOT INITIALIZED", WAITSYNC_NO);
                 return;
             }
@@ -225,14 +222,14 @@ namespace dmac
                     break;
                 }
                 default:
-                    ROS_ERROR_STREAM("" << __func__ << ": unsupported message type: " << msg->type);
+                    RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": unsupported message type: " << msg->type);
                     break;
                 }
             }
             else
             {
                 publishSync("ERROR SEQUENCE ERROR", waitsync_);
-                ROS_ERROR_STREAM("" << __func__ << ": sequence error");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": sequence error");
             }
         }
 
@@ -247,7 +244,7 @@ namespace dmac
             {
                 if (msg->command == "$")
                 {
-                    ROS_ERROR_STREAM("TODO: " << __func__ << "(" << __LINE__ << ")");
+                    RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "TODO: " << __func__ << "(" << __LINE__ << ")");
                 }
                 else
                 {
@@ -277,7 +274,7 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": sequence error");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": sequence error");
                 publishSync("ERROR SEQUENCE ERROR", waitsync_);
             }
         }
@@ -293,7 +290,7 @@ namespace dmac
             {
                 return;
             }
-            ROS_ERROR_STREAM("Answer timeout: waitsync: " << waitsync_);
+            RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Answer timeout: waitsync: " << waitsync_);
             publishSync("ERROR ANSWER TIMEOUT", WAITSYNC_NO);
         }
 
@@ -339,7 +336,7 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("Driver not yet initialized");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Driver not yet initialized");
                 publishSync("ERROR NOT INITIALIZED", WAITSYNC_NO);
             }
         }
@@ -381,7 +378,7 @@ namespace dmac
             }
         }
 
-        void publishUSBLFix(mUSBLFix &fix)
+        void publishUSBLFix(MUSBLFix &fix)
         {
             pub_usblfix_.publish(fix);
         }
@@ -434,12 +431,12 @@ namespace dmac
                             to_term_net();
                             if (!more_.empty())
                             {
-                                ROS_ERROR_STREAM("BES parse error: " << more_);
+                                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "BES parse error: " << more_);
                             }
                         }
                         else
                         {
-                            ROS_ERROR_STREAM("BES unexpected sync message: " << body);
+                            RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "BES unexpected sync message: " << body);
                         }
                         more_ = body_matches[2];
                     }
@@ -452,7 +449,7 @@ namespace dmac
                 }
                 else
                 {
-                    ROS_WARN_STREAM("need more data: " << more_.data());
+                    RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "need more data: " << more_.data());
                 }
             }
             else
@@ -469,12 +466,12 @@ namespace dmac
                     }
                     if (!maybe_bes_matches[2].str().empty())
                     {
-                        ROS_WARN_STREAM("need more data: " << more_.data());
+                        RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "need more data: " << more_.data());
                     }
                 }
                 else
                 {
-                    ROS_ERROR_STREAM("unexpected error parsing: " << more_);
+                    RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "unexpected error parsing: " << more_);
                 }
             }
         }
@@ -534,7 +531,7 @@ namespace dmac
                             case WAITSYNC_NO:
                             {
                                 size_t pos = more_.find("\r\n");
-                                ROS_ERROR_STREAM("Unexpected sync message: " << more_.substr(0, pos));
+                                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Unexpected sync message: " << more_.substr(0, pos));
                                 more_.erase(0, pos + 2);
                                 break;
                             }
@@ -553,12 +550,12 @@ namespace dmac
                                 }
                                 else
                                 {
-                                    ROS_WARN_STREAM("need more data: " << more_.data());
+                                    RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "need more data: " << more_.data());
                                 }
                                 break;
                             }
                             case WAITSYNC_BINARY:
-                                ROS_ERROR_STREAM("TODO: " << __func__ << "(" << __LINE__ << ")");
+                                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "TODO: " << __func__ << "(" << __LINE__ << ")");
                                 break;
                             }
                         }
@@ -567,13 +564,13 @@ namespace dmac
             }
             else
             {
-                ROS_WARN_STREAM("need more data: " << more_.data());
+                RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "need more data: " << more_.data());
             }
         }
 
         void async_extract(std::string async, std::string parameters)
         {
-            ROS_INFO_STREAM("processing " << async);
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "processing " << async);
             if (async == "RECVSTART")
             {
                 recvstart(parameters);
@@ -656,7 +653,7 @@ namespace dmac
             }
             else
             {
-                ROS_WARN_STREAM("unsupported async: " << async);
+                RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "unsupported async: " << async);
             }
         }
 
@@ -679,7 +676,7 @@ namespace dmac
 
         void recvend(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -696,13 +693,13 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 4.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 4.");
             }
         }
 
         void recvfailed(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -718,7 +715,7 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 3.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 3.");
             }
         }
 
@@ -740,7 +737,7 @@ namespace dmac
 
         void sendstart(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -757,13 +754,13 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 4.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 4.");
             }
         }
 
         void sendend(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -780,22 +777,22 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 4.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 4.");
             }
         }
 
         void usbllong(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
             if (l.size() == 16)
             {
-                mUSBLFix fix_msg;
+                MUSBLFix fix_msg;
                 fix_msg.header.stamp = ros::Time::now();
                 fix_msg.header.frame_id = "usbl";
-                fix_msg.type = mUSBLFix::FULL_FIX;
+                fix_msg.type = MUSBLFix::FULL_FIX;
                 std::list<std::string>::iterator it = l.begin();
                 double telegram_time = boost::lexical_cast<double>(*it++);
                 double measurement_time = boost::lexical_cast<double>(*it++);
@@ -828,22 +825,22 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 16.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 16.");
             }
         }
 
         void usblangles(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
             if (l.size() == 13)
             {
-                mUSBLFix fix_msg;
+                MUSBLFix fix_msg;
                 fix_msg.header.stamp = ros::Time::now();
                 fix_msg.header.frame_id = "usbl";
-                fix_msg.type = mUSBLFix::AZIMUTH_ONLY;
+                fix_msg.type = MUSBLFix::AZIMUTH_ONLY;
                 std::list<std::string>::iterator it = l.begin();
                 double telegram_time = boost::lexical_cast<double>(*it++);
                 double measurement_time = boost::lexical_cast<double>(*it++);
@@ -864,7 +861,7 @@ namespace dmac
                 *it++;
 
                 double accuracy = boost::lexical_cast<double>(*it);
-                //ROS_ERROR_STREAM("" << __func__ << ": accuracy = " << accuracy);
+                //RCLCPP_ERROR_STREAM("" << __func__ << ": accuracy = " << accuracy);
 
                 fix_msg.bearing_raw = lbearing;
                 fix_msg.elevation_raw = lelevation;
@@ -886,13 +883,13 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 13.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 13.");
             }
         }
 
         void usblphyd(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -917,17 +914,17 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 12.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 12.");
             }
         }
 
         void usblphyp(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
-            ROS_INFO_STREAM("phyp: " << l.size());
+            RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "phyp: " << l.size());
             if (l.size() == 22)
             {
                 DMACAsync async_msg;
@@ -959,13 +956,13 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 22.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 22.");
             }
         }
 
         void bitrate(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -980,13 +977,13 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 2.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 2.");
             }
         }
 
         void raddr(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             DMACAsync async_msg;
             async_msg.header.stamp = ros::Time::now();
             async_msg.async = "raddr";
@@ -998,7 +995,7 @@ namespace dmac
 
         void delivered(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -1018,13 +1015,13 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 1 or 2.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 1 or 2.");
             }
         }
 
         void failed(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -1044,13 +1041,13 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 1 or 2.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 1 or 2.");
             }
         }
 
         void canceled(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -1066,13 +1063,13 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 1.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 1.");
             }
         }
 
         void expired(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             static const boost::regex comma(",");
             std::list<std::string> l;
             boost::regex_split(std::back_inserter(l), parameters, comma);
@@ -1088,13 +1085,13 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("" << __func__ << ": expected parameter count " << l.size() << " is not equal to 2.");
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "" << __func__ << ": expected parameter count " << l.size() << " is not equal to 2.");
             }
         }
 
         void srclevel(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             DMACAsync async_msg;
             async_msg.header.stamp = ros::Time::now();
             async_msg.async = "srclevel";
@@ -1106,7 +1103,7 @@ namespace dmac
 
         void dropcnt(std::string parameters)
         {
-            diagnostic_msgs::KeyValue kv;
+            diagnostic_msgs::msg::KeyValue kv;
             DMACAsync async_msg;
             async_msg.header.stamp = ros::Time::now();
             async_msg.async = "dropcnt";
@@ -1136,7 +1133,7 @@ namespace dmac
             }
             else
             {
-                ROS_WARN_STREAM("ECLK parse error: " << parameters);
+                RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "ECLK parse error: " << parameters);
                 more_.erase(0, more_.find("\r\n") + 2);
             }
         }
@@ -1161,7 +1158,7 @@ namespace dmac
             }
             else
             {
-                ROS_ERROR_STREAM("Unsupported recv: " << recv);
+                RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Unsupported recv: " << recv);
                 more_.erase(0, more_.find("\r\n") + 2);
             }
         }
@@ -1217,7 +1214,7 @@ namespace dmac
                     }
                     else
                     {
-                        ROS_ERROR_STREAM("Cannot extract payload of length: "
+                        RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Cannot extract payload of length: "
                                          << len << ": in "
                                          << recv_matches[8].str());
                         more_.erase(0, more_.find("\r\n") + 2);
@@ -1230,7 +1227,7 @@ namespace dmac
             }
             else
             {
-                ROS_WARN_STREAM("RECV parse error: " << tail);
+                RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "RECV parse error: " << tail);
                 more_.erase(0, more_.find("\r\n") + 2);
             }
         }
@@ -1280,7 +1277,7 @@ namespace dmac
                     }
                     else
                     {
-                        ROS_WARN_STREAM("Unsupported RECVIM ack flag: " << recvim_matches[3]);
+                        RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "Unsupported RECVIM ack flag: " << recvim_matches[3]);
                         more_.erase(0, more_.find("\r\n") + 2);
                         return;
                     }
@@ -1295,7 +1292,7 @@ namespace dmac
                     }
                     else
                     {
-                        ROS_ERROR_STREAM("Cannot extract payload of length: "
+                        RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Cannot extract payload of length: "
                                          << len << ": in "
                                          << recvim_matches[8].str());
                         more_.erase(0, more_.find("\r\n") + 2);
@@ -1308,7 +1305,7 @@ namespace dmac
             }
             else
             {
-                ROS_WARN_STREAM("RECVIM parse error: " << tail);
+                RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "RECVIM parse error: " << tail);
                 more_.erase(0, more_.find("\r\n") + 2);
             }
         }
@@ -1346,7 +1343,7 @@ namespace dmac
                     }
                     else
                     {
-                        ROS_ERROR_STREAM("Cannot extract payload of length: "
+                        RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Cannot extract payload of length: "
                                          << len << ": in "
                                          << recvims_matches[8].str());
                         more_.erase(0, more_.find("\r\n") + 2);
@@ -1359,7 +1356,7 @@ namespace dmac
             }
             else
             {
-                ROS_WARN_STREAM("RECVIMS parse error: " << tail);
+                RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "RECVIMS parse error: " << tail);
                 more_.erase(0, more_.find("\r\n") + 2);
             }
         }
@@ -1396,7 +1393,7 @@ namespace dmac
                     }
                     else
                     {
-                        ROS_ERROR_STREAM("Cannot extract payload of length: "
+                        RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"), "Cannot extract payload of length: "
                                          << len << ": in "
                                          << recvpbm_matches[7].str());
                         more_.erase(0, more_.find("\r\n") + 2);
@@ -1409,7 +1406,7 @@ namespace dmac
             }
             else
             {
-                ROS_WARN_STREAM("RECVPBM parse error: " << tail);
+                RCLCPP_WARN_STREAM(rclcpp::get_logger("dmac2_logger"), "RECVPBM parse error: " << tail);
                 more_.erase(0, more_.find("\r\n") + 2);
             }
         }

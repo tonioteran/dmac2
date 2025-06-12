@@ -29,23 +29,26 @@
 #ifndef DMAC_SERIAL_CLIENT_H
 #define DMAC_SERIAL_CLIENT_H
 
-#include <iostream>
 #include <boost/asio.hpp>
 #include <boost/asio/serial_port.hpp>
+#include <boost/bind.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
-#include <boost/bind.hpp>
+#include <iostream>
 
-#include <ros/ros.h>
-
-#include "parser.h"
-#include "config.h"
 #include "comm_middlemen.h"
+#include "config.h"
+#include "parser.h"
+#include "rclcpp/logging.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 typedef boost::shared_ptr<boost::asio::serial_port> serial_port_ptr;
 
 namespace dmac
 {
+namespace {
+constexpr char kLoggerName[] = "dmac2_logger";
+}  // namespace
 
     class serial_client : public dmac::comm_middlemen
     {
@@ -76,7 +79,7 @@ namespace dmac
 
         void do_close()
         {
-            ROS_WARN_STREAM("connection closed...");
+            RCLCPP_WARN_STREAM(rclcpp::get_logger(kLoggerName), "connection closed...");
             parser_.disconnected();
             if (port_)
             {
@@ -96,7 +99,7 @@ namespace dmac
             {
                 return;
             }
-            ROS_INFO_STREAM("reconnecting");
+            RCLCPP_INFO_STREAM(rclcpp::get_logger(kLoggerName), "reconnecting");
             connect();
         }
 
@@ -104,7 +107,7 @@ namespace dmac
         {
             if (port_)
             {
-                ROS_WARN_STREAM("error : port is already opened...");
+                RCLCPP_WARN_STREAM(rclcpp::get_logger(kLoggerName), "error : port is already opened...");
                 do_close();
                 return;
             }
@@ -117,7 +120,7 @@ namespace dmac
             port_->open(portname, ec);
             if (ec)
             {
-                ROS_WARN_STREAM("error : port_->open() failed... portname=" << portname << ", e=" << ec.message().c_str());
+                RCLCPP_WARN_STREAM(rclcpp::get_logger(kLoggerName), "error : port_->open() failed... portname=" << portname << ", e=" << ec.message().c_str());
                 do_close();
                 return;
             }

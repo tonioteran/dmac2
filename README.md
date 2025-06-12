@@ -90,3 +90,10 @@ USBLANGLES,<current time>,<measurement time>,<remote_address>,<lbearing>,
  - Ethernet: `\n`
  - Serial: `\r` 
  - Answers: `\r\n` 
+
+## Dev Notes
+
+TODO: delete this once the port is over.
+
+- For the new logging in ROS2, this was useful: https://robotics.stackexchange.com/questions/96379/global-logger-for-logging-without-a-node.
+

@@ -12,25 +12,13 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(dmac2_interfaces REQUIRED)
 
 # TODO: this seems to be a ROS1 thing...
 #find_package(message_generation REQUIRED)
 
-#find_package(rosidl_default_generators REQUIRED)
-#rosidl_generate_interfaces(${PROJECT_NAME}
-   ##"msg/DMACPayload.msg"
-   ##"msg/DMACRaw.msg"
-   ##"msg/DMACAsync.msg"
-   ##"msg/DMACSync.msg"
-   ##"msg/DMACClock.msg"
-   ##"msg/mUSBLFix.msg"
-  #DEPENDENCIES sensor_msgs
- #)
-#ament_export_dependencies(rosidl_default_runtime)
-
-
 add_executable(dmac src/dmac_driver.cpp)
-ament_target_dependencies(dmac rclcpp std_msgs)
+ament_target_dependencies(dmac rclcpp std_msgs dmac2_interfaces)
 
 install(TARGETS
     dmac

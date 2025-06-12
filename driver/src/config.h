@@ -29,11 +29,13 @@
 #ifndef DMAC_CONFIG_H
 #define DMAC_CONFIG_H
 
-#include <string>
 #include <boost/lexical_cast.hpp>
-#include "dmac/DMACSync.h"
+#include <string>
 
-using dmac::DMACSync;
+#include "dmac2_interfaces/msg/dmac_sync.hpp"
+
+using dmac2_interfaces::msg::DMACSync;
+using DMACSyncPtr = std::shared_ptr<DMACSync>;
 
 namespace dmac
 {
@@ -75,7 +77,7 @@ namespace dmac
         void load(void)
         {
             ros::param::param<bool>(node_name_ + "/modem_config/hasAHRS", hasAHRS_, false);
-            ROS_INFO_STREAM("hasAHRS: " << hasAHRS_);
+            RCLCPP_INFO_STREAM("hasAHRS: " << hasAHRS_);
 
             /* default: @ZX1, @ZU1, !C1? */
             pushSync("@CTRL");

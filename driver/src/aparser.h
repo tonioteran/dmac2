@@ -29,9 +29,9 @@
 #ifndef DMAC_APARSER_H
 #define DMAC_APARSER_H
 
-#include "dmac/DMACAsync.h"
+//#include "dmac/DMACAsync.h"
 
-using dmac::DMACSync;
+using dmac2_interfaces::msg::DMACSync;
 
 namespace dmac
 {
@@ -72,8 +72,8 @@ namespace dmac
   {
   public:
     virtual void ctrl(parser_state_ctrl ctrl, int value) = 0;
-    virtual void syncCallback(const dmac::DMACSync::ConstPtr &msg, bool privilege) = 0;
-    virtual void syncCallback(const dmac::DMACSync::ConstPtr &msg) = 0;
+    virtual void syncCallback(const DMACSync::ConstPtr &msg, bool privilege) = 0;
+    virtual void syncCallback(const DMACSync::ConstPtr &msg) = 0;
   };
 
 } // namespace
