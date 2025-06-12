@@ -76,17 +76,28 @@ class parser : public dmac::abstract_parser {
         ext_networking_(false),
         pid_(0),
         ini_(this, &config) {
-    pub_recv_ = nh_.advertise<DMACPayload>(config.nodeName() + "/recv", 100);
-    pub_async_ = nh_.advertise<DMACAsync>(config.nodeName() + "/async", 100);
-    pub_clock_ = nh_.advertise<DMACClock>(config.nodeName() + "/clock", 100);
-    pub_raw_ = nh_.advertise<DMACRaw>(config.nodeName() + "/raw", 100);
-    pub_usblfix_ = nh_.advertise<MUSBLFix>(
+    node_ = std::make_shared<rclcpp::Node>("dmac2_parser");
+
+    pub_recv_ =
+        node_->create_publisher<DMACPayload>(config.nodeName() + "/recv", 100);
+    pub_async_ =
+        node_->create_publisher<DMACAsync>(config.nodeName() + "/async", 100);
+    pub_clock_ =
+        node_->create_publisher<DMACClock>(config.nodeName() + "/clock", 100);
+    pub_raw_ =
+        node_->create_publisher<DMACRaw>(config.nodeName() + "/raw", 100);
+    pub_usblfix_ = node_->create_publisher<MUSBLFix>(
         config.nodeName() + "/measurement/usbl_fix", 100);
-    pub_sync_ = nh_.advertise<DMACSync>(config.nodeName() + "/sync", 100);
-    sub_sync_ = nh_.subscribe(config.nodeName() + "/sync", 100,
-                              &parser::syncCallback, this);
-    sub_send_ = nh_.subscribe(config.nodeName() + "/send", 100,
-                              &parser::sendCallback, this);
+    pub_sync_ =
+        node_->create_publisher<DMACSync>(config.nodeName() + "/sync", 100);
+
+    sub_sync_ = node_->create_subscription<DMACSync>(
+        config.nodeName() + "/sync", 100,
+        std::bind(&parser::syncCallback, this, std::placeholders::_1));
+    sub_send_ = node_->create_subscription<DMACPayload>(
+        config.nodeName() + "/send", 100,
+        std::bind(&parser::sendCallback, this, std::placeholders::_1));
+
     comm_ = comm;
   }
 
@@ -228,8 +239,9 @@ class parser : public dmac::abstract_parser {
     }
   }
 
-  void syncCallback(const DMACSync::ConstPtr &msg,
-                    bool privilege) { /* privilege true for initialiser */
+  void syncCallbackWithPrivilege(
+      const DMACSync::ConstPtr &msg,
+      bool privilege) { /* privilege true for initialiser */
     if (!msg->report.empty()) {
       /* ignore published by oursleves modem response */
       return;
@@ -265,7 +277,9 @@ class parser : public dmac::abstract_parser {
     }
   }
 
-  void syncCallback(const DMACSync::ConstPtr &msg) { syncCallback(msg, false); }
+  void syncCallback(const DMACSync::ConstPtr &msg) {
+    syncCallbackWithPrivilege(msg, false);
+  }
 
   void handle_answer_timeout(const boost::system::error_code &error) {
     if (error == boost::asio::error::operation_aborted) {
@@ -276,13 +290,18 @@ class parser : public dmac::abstract_parser {
     publishSync("ERROR ANSWER TIMEOUT", WAITSYNC_NO);
   }
 
+  // Need to expose this node to spin it with a multi-threaded executor (ROS2).
+  std::shared_ptr<rclcpp::Node> node() { return node_; }
+
  private:
   boost::asio::io_service &io_service_;
   dmac::comm_middlemen *comm_;
   dmac::config config_;
   dmac::initializer ini_;
   /* parser state */
-  ros::NodeHandle nh_;
+
+  std::shared_ptr<rclcpp::Node> node_;
+
   dmac_filter_type filter_;
   dmac_filter_mode mode_;
   dmac_filter_state state_;
@@ -295,14 +314,15 @@ class parser : public dmac::abstract_parser {
   std::string more_;
   boost::asio::deadline_timer answer_timer_;
 
-  ros::Publisher pub_recv_;
-  ros::Publisher pub_raw_;
-  ros::Publisher pub_async_;
-  ros::Publisher pub_clock_;
-  ros::Publisher pub_usblfix_;
-  ros::Publisher pub_sync_;
-  ros::Subscriber sub_sync_;
-  ros::Subscriber sub_send_;
+  rclcpp::Publisher<DMACPayload>::SharedPtr pub_recv_;
+  rclcpp::Publisher<DMACRaw>::SharedPtr pub_raw_;
+  rclcpp::Publisher<DMACAsync>::SharedPtr pub_async_;
+  rclcpp::Publisher<DMACClock>::SharedPtr pub_clock_;
+  rclcpp::Publisher<MUSBLFix>::SharedPtr pub_usblfix_;
+  rclcpp::Publisher<DMACSync>::SharedPtr pub_sync_;
+
+  rclcpp::Subscription<DMACSync>::SharedPtr sub_sync_;
+  rclcpp::Subscription<DMACPayload>::SharedPtr sub_send_;
 
   void sendSync(std::string &message, bool privilege) {
     if (privilege || ini_.ready()) {
@@ -324,43 +344,43 @@ class parser : public dmac::abstract_parser {
 
   void publishRaw(std::string raw) {
     DMACRaw raw_msg;
-    raw_msg.stamp = ros::Time::now();
+    raw_msg.stamp = node_->get_clock()->now();
     raw_msg.command = raw;
 
-    pub_raw_.publish(raw_msg);
+    pub_raw_->publish(raw_msg);
   }
 
   void publishSync(std::string report, dmac_waitsync_status waitsync) {
     waitsync_ = waitsync;
 
     DMACSync sync_msg;
-    sync_msg.header.stamp = ros::Time::now();
+    sync_msg.header.stamp = node_->get_clock()->now();
     sync_msg.command = request_;
     sync_msg.parameters = request_parameters_;
     sync_msg.report = report;
     if (ini_.state() == dmac::FINAL) {
-      pub_sync_.publish(sync_msg);
+      pub_sync_->publish(sync_msg);
     } else {
       ini_.sync(sync_msg);
       if (sync_msg.report == "ERROR NOT INITIALIZED") {
-        pub_sync_.publish(sync_msg);
+        pub_sync_->publish(sync_msg);
       }
     }
   }
 
-  void publishUSBLFix(MUSBLFix &fix) { pub_usblfix_.publish(fix); }
+  void publishUSBLFix(MUSBLFix &fix) { pub_usblfix_->publish(fix); }
 
   void publishRecv(DMACPayload &rcv) {
     if (ini_.state() == dmac::FINAL) {
-      pub_recv_.publish(rcv);
+      pub_recv_->publish(rcv);
     } else {
       ini_.raw(rcv);
     }
   }
 
-  void publishAsync(DMACAsync &async) { pub_async_.publish(async); }
+  void publishAsync(DMACAsync &async) { pub_async_->publish(async); }
 
-  void publishClock(DMACClock &clk) { pub_clock_.publish(clk); }
+  void publishClock(DMACClock &clk) { pub_clock_->publish(clk); }
 
   void to_term_at() { /* bes_split */
     static const boost::regex bes_regex("((.*?)(\\+{3}AT.*?):(\\d+):)(.*)");
@@ -557,8 +577,8 @@ class parser : public dmac::abstract_parser {
 
   void recvstart(std::string parameters) {
     DMACAsync async_msg;
-    async_msg.header.stamp = ros::Time::now();
-    async_msg.async = "recvstart";
+    async_msg.header.stamp = node_->get_clock()->now();
+    async_msg.async_kwd = "recvstart";
     publishAsync(async_msg);
   }
 
@@ -569,8 +589,8 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 4) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
-      async_msg.async = "recvend";
+      async_msg.header.stamp = node_->get_clock()->now();
+      async_msg.async_kwd = "recvend";
       KEYVALUE_HELPER(async_msg, "timestamp", l);
       KEYVALUE_HELPER(async_msg, "duration", l);
       KEYVALUE_HELPER(async_msg, "rssi", l);
@@ -590,8 +610,8 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 3) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
-      async_msg.async = "recvfailed";
+      async_msg.header.stamp = node_->get_clock()->now();
+      async_msg.async_kwd = "recvfailed";
       KEYVALUE_HELPER(async_msg, "relative_velocity", l);
       KEYVALUE_HELPER(async_msg, "rssi", l);
       KEYVALUE_HELPER(async_msg, "integrity", l);
@@ -605,15 +625,15 @@ class parser : public dmac::abstract_parser {
 
   void phyoff(std::string parameters) {
     DMACAsync async_msg;
-    async_msg.header.stamp = ros::Time::now();
-    async_msg.async = "phyoff";
+    async_msg.header.stamp = node_->get_clock()->now();
+    async_msg.async_kwd = "phyoff";
     publishAsync(async_msg);
   }
 
   void phyon(std::string parameters) {
     DMACAsync async_msg;
-    async_msg.header.stamp = ros::Time::now();
-    async_msg.async = "phyon";
+    async_msg.header.stamp = node_->get_clock()->now();
+    async_msg.async_kwd = "phyon";
     publishAsync(async_msg);
   }
 
@@ -624,8 +644,8 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 4) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
-      async_msg.async = "sendstart";
+      async_msg.header.stamp = node_->get_clock()->now();
+      async_msg.async_kwd = "sendstart";
       KEYVALUE_HELPER(async_msg, "destination_address", l);
       KEYVALUE_HELPER(async_msg, "type", l);
       KEYVALUE_HELPER(async_msg, "duration", l);
@@ -645,8 +665,8 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 4) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
-      async_msg.async = "sendend";
+      async_msg.header.stamp = node_->get_clock()->now();
+      async_msg.async_kwd = "sendend";
       KEYVALUE_HELPER(async_msg, "destination_address", l);
       KEYVALUE_HELPER(async_msg, "type", l);
       KEYVALUE_HELPER(async_msg, "timestamp", l);
@@ -666,7 +686,7 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 16) {
       MUSBLFix fix_msg;
-      fix_msg.header.stamp = ros::Time::now();
+      fix_msg.header.stamp = node_->get_clock()->now();
       fix_msg.header.frame_id = "usbl";
       fix_msg.type = MUSBLFix::FULL_FIX;
       std::list<std::string>::iterator it = l.begin();
@@ -713,7 +733,7 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 13) {
       MUSBLFix fix_msg;
-      fix_msg.header.stamp = ros::Time::now();
+      fix_msg.header.stamp = node_->get_clock()->now();
       fix_msg.header.frame_id = "usbl";
       fix_msg.type = MUSBLFix::AZIMUTH_ONLY;
       std::list<std::string>::iterator it = l.begin();
@@ -765,8 +785,8 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 12) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
-      async_msg.async = "usblphyd";
+      async_msg.header.stamp = node_->get_clock()->now();
+      async_msg.async_kwd = "usblphyd";
       KEYVALUE_HELPER(async_msg, "telegram_time", l);
       KEYVALUE_HELPER(async_msg, "measurement_time", l);
       KEYVALUE_HELPER(async_msg, "source_address", l);
@@ -796,8 +816,8 @@ class parser : public dmac::abstract_parser {
                        "phyp: " << l.size());
     if (l.size() == 22) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
-      async_msg.async = "usblphyp";
+      async_msg.header.stamp = node_->get_clock()->now();
+      async_msg.async_kwd = "usblphyp";
       KEYVALUE_HELPER(async_msg, "telegram_time", l);
       KEYVALUE_HELPER(async_msg, "measurement_time", l);
       KEYVALUE_HELPER(async_msg, "source_address", l);
@@ -835,8 +855,8 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 2) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
-      async_msg.async = "bitrate";
+      async_msg.header.stamp = node_->get_clock()->now();
+      async_msg.async_kwd = "bitrate";
       KEYVALUE_HELPER(async_msg, "direction", l);
       KEYVALUE_HELPER(async_msg, "value", l);
       publishAsync(async_msg);
@@ -850,8 +870,8 @@ class parser : public dmac::abstract_parser {
   void raddr(std::string parameters) {
     diagnostic_msgs::msg::KeyValue kv;
     DMACAsync async_msg;
-    async_msg.header.stamp = ros::Time::now();
-    async_msg.async = "raddr";
+    async_msg.header.stamp = node_->get_clock()->now();
+    async_msg.async_kwd = "raddr";
     kv.key = "value";
     kv.value = parameters;
     async_msg.map.push_back(kv);
@@ -865,10 +885,11 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 2 || l.size() == 3) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
+      async_msg.header.stamp = node_->get_clock()->now();
       std::string type = *(l.begin());
       l.pop_front();
-      async_msg.async = "delivered" + boost::to_lower_copy<std::string>(type);
+      async_msg.async_kwd =
+          "delivered" + boost::to_lower_copy<std::string>(type);
       if (type == "") {
         KEYVALUE_HELPER(async_msg, "counter", l);
       }
@@ -888,10 +909,10 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 2 || l.size() == 3) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
+      async_msg.header.stamp = node_->get_clock()->now();
       std::string type = *(l.begin());
       l.pop_front();
-      async_msg.async = "failed" + boost::to_lower_copy<std::string>(type);
+      async_msg.async_kwd = "failed" + boost::to_lower_copy<std::string>(type);
       if (type == "") {
         KEYVALUE_HELPER(async_msg, "counter", l);
       }
@@ -911,10 +932,11 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 2) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
+      async_msg.header.stamp = node_->get_clock()->now();
       std::string type = *(l.begin());
       l.pop_front();
-      async_msg.async = "canceled" + boost::to_lower_copy<std::string>(type);
+      async_msg.async_kwd =
+          "canceled" + boost::to_lower_copy<std::string>(type);
       KEYVALUE_HELPER(async_msg, "destination_address", l);
       publishAsync(async_msg);
     } else {
@@ -931,10 +953,10 @@ class parser : public dmac::abstract_parser {
     boost::regex_split(std::back_inserter(l), parameters, comma);
     if (l.size() == 2) {
       DMACAsync async_msg;
-      async_msg.header.stamp = ros::Time::now();
+      async_msg.header.stamp = node_->get_clock()->now();
       std::string type = *(l.begin());
       l.pop_front();
-      async_msg.async = "expired" + boost::to_lower_copy<std::string>(type);
+      async_msg.async_kwd = "expired" + boost::to_lower_copy<std::string>(type);
       KEYVALUE_HELPER(async_msg, "destination_address", l);
       publishAsync(async_msg);
     } else {
@@ -947,8 +969,8 @@ class parser : public dmac::abstract_parser {
   void srclevel(std::string parameters) {
     diagnostic_msgs::msg::KeyValue kv;
     DMACAsync async_msg;
-    async_msg.header.stamp = ros::Time::now();
-    async_msg.async = "srclevel";
+    async_msg.header.stamp = node_->get_clock()->now();
+    async_msg.async_kwd = "srclevel";
     kv.key = "value";
     kv.value = parameters;
     async_msg.map.push_back(kv);
@@ -958,8 +980,8 @@ class parser : public dmac::abstract_parser {
   void dropcnt(std::string parameters) {
     diagnostic_msgs::msg::KeyValue kv;
     DMACAsync async_msg;
-    async_msg.header.stamp = ros::Time::now();
-    async_msg.async = "dropcnt";
+    async_msg.header.stamp = node_->get_clock()->now();
+    async_msg.async_kwd = "dropcnt";
     kv.key = "value";
     kv.value = parameters;
     async_msg.map.push_back(kv);
@@ -974,16 +996,16 @@ class parser : public dmac::abstract_parser {
     if (boost::regex_match(parameters, clk_matches,
                            clk_regex)) { /* format matched */
       DMACClock clock_msg;
-      clock_msg.stamp = ros::Time::now();
+      clock_msg.stamp = node_->get_clock()->now();
       clock_msg.mono.sec = boost::lexical_cast<unsigned int>(clk_matches[1]);
-      clock_msg.mono.nsec =
+      clock_msg.mono.nanosec =
           1000 * boost::lexical_cast<unsigned int>(clk_matches[2]);
       clock_msg.phy_clock = boost::lexical_cast<unsigned int>(clk_matches[3]);
       clock_msg.phy_steer = boost::lexical_cast<unsigned int>(clk_matches[4]);
       clock_msg.status = boost::lexical_cast<unsigned int>(clk_matches[5]);
       clock_msg.utc_time.sec =
           boost::lexical_cast<unsigned int>(clk_matches[6]);
-      clock_msg.utc_time.nsec =
+      clock_msg.utc_time.nanosec =
           1000 * boost::lexical_cast<unsigned int>(clk_matches[7]);
       publishClock(clock_msg);
     } else {
@@ -1015,7 +1037,7 @@ class parser : public dmac::abstract_parser {
     if (!raw.empty()) {
       DMACPayload recv_msg;
 
-      recv_msg.header.stamp = ros::Time::now();
+      recv_msg.header.stamp = node_->get_clock()->now();
       recv_msg.type = DMACPayload::DMAC_BURST;
       /* TODO: add remote address update tracking for std modem */
       recv_msg.payload = raw;
@@ -1033,7 +1055,7 @@ class parser : public dmac::abstract_parser {
     if (boost::regex_match(tail, recv_matches,
                            recv_regex)) { /* format matched, check length */
       if (len + 2 <= recv_matches[8].str().length()) {
-        recv_msg.header.stamp = ros::Time::now();
+        recv_msg.header.stamp = node_->get_clock()->now();
         recv_msg.type = DMACPayload::DMAC_BURST;
         recv_msg.ack = false;
         recv_msg.force = false;
@@ -1092,9 +1114,9 @@ class parser : public dmac::abstract_parser {
       if (len + 2 <= recvim_matches[8].str().length()) {
         /* todo: add names parameter */
         recvim_msg.header.stamp =
-            ros::Time::now() -
-            ros::Duration(boost::lexical_cast<uint32_t>(recvim_matches[4]) /
-                          1000000.0);
+            node_->get_clock()->now() -
+            rclcpp::Duration(
+                boost::lexical_cast<uint32_t>(recvim_matches[4]) / 1000000, 0);
         recvim_msg.type = DMACPayload::DMAC_IM;
         recvim_msg.source_address = boost::lexical_cast<int>(recvim_matches[1]);
         recvim_msg.destination_address =
@@ -1159,9 +1181,9 @@ class parser : public dmac::abstract_parser {
                            recvims_regex)) { /* format matched, check length */
       if (len + 2 <= recvims_matches[8].str().length()) {
         recvims_msg.header.stamp =
-            ros::Time::now() -
-            ros::Duration(boost::lexical_cast<uint32_t>(recvims_matches[4]) /
-                          1000000.0);
+            node_->get_clock()->now() -
+            rclcpp::Duration(
+                boost::lexical_cast<uint32_t>(recvims_matches[4]) / 1000000, 0);
         recvims_msg.type = DMACPayload::DMAC_IMS;
         recvims_msg.source_address =
             boost::lexical_cast<int>(recvims_matches[1]);
@@ -1214,9 +1236,9 @@ class parser : public dmac::abstract_parser {
                            recvpbm_regex)) { /* format matched, check length */
       if (len + 2 <= recvpbm_matches[7].str().length()) {
         recvpbm_msg.header.stamp =
-            ros::Time::now() -
-            ros::Duration(boost::lexical_cast<uint32_t>(recvpbm_matches[3]) /
-                          1000000.0);
+            node_->get_clock()->now() -
+            rclcpp::Duration(
+                boost::lexical_cast<uint32_t>(recvpbm_matches[3]) / 1000000, 0);
         recvpbm_msg.type = DMACPayload::DMAC_PBM;
         recvpbm_msg.source_address =
             boost::lexical_cast<int>(recvpbm_matches[1]);

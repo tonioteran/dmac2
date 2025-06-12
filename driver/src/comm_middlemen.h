@@ -42,7 +42,7 @@ namespace dmac {
 
 class comm_middlemen {
  public:
-  virtual void send(std::string &message) = 0;
+  virtual void send(std::string& message) = 0;
 };
 
 }  // namespace dmac

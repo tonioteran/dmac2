@@ -293,7 +293,7 @@ class initializer {
         DMACSyncPtr sync(new DMACSync);
         sync->header.stamp = clock_.now();
         sync->command = "?MODE";
-        parser_->syncCallback(sync, true);
+        parser_->syncCallbackWithPrivilege(sync, true);
         break;
       }
       case WRONG_RCV: {
@@ -332,7 +332,7 @@ class initializer {
         sync->command = "?MODE";
         sync->parameters = "";
         parser_->ctrl(dmac::WAITSYNC, dmac::WAITSYNC_NO);
-        parser_->syncCallback(sync, true);
+        parser_->syncCallbackWithPrivilege(sync, true);
         break;
       }
       default:
@@ -362,7 +362,7 @@ class initializer {
             sync->header.stamp = clock_.now();
             sync->command = "O";
             sync->parameters = "";
-            parser_->syncCallback(sync, true);
+            parser_->syncCallbackWithPrivilege(sync, true);
             parser_->ctrl(dmac::MODE, dmac::DMAC_DATA_MODE);
             next_event = YAR;
           } else if (sync->command.compare("?MODE") == 0 &&
@@ -400,7 +400,7 @@ class initializer {
         if (initializer_it == config_->initializer_end()) {
           next_event = DONE;
         } else {
-          parser_->syncCallback(*initializer_it, true);
+          parser_->syncCallbackWithPrivilege(*initializer_it, true);
           initializer_it++;
         }
         break;

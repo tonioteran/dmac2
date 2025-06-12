@@ -40,7 +40,7 @@
 
 namespace std {
 template <typename T>
-std::string to_string(const T &n) {
+std::string to_string(const T& n) {
   std::ostringstream s;
   s << n;
   return s.str();
@@ -64,7 +64,6 @@ class DmacRos2Node : public rclcpp::Node {
     type = "TCP/IP";
 
     boost::asio::io_service io_service;
-    dmac::tcp_client *s = NULL;
 
     if (type == "TCP/IP") {
       // TODO: Figure out how to read from param server in ROS2 cpp. Use
@@ -89,10 +88,10 @@ class DmacRos2Node : public rclcpp::Node {
       tcp::resolver::query query(IP, std::to_string(port));
       tcp::resolver::iterator iterator = resolver.resolve(query);
 
-      dmac::tcp_client *s = new dmac::tcp_client(io_service, iterator, config);
+      s_ = new dmac::tcp_client(io_service, iterator, config);
     } else if (type == "SERIAL") {
       RCLCPP_INFO_STREAM(get_logger(), "Connecting to serial modem");
-      dmac::serial_client *s = new dmac::serial_client(io_service, config);
+      dmac::serial_client* s = new dmac::serial_client(io_service, config);
     } else {
       RCLCPP_ERROR_STREAM(get_logger(),
                           "Unsupported connection type: " << type);
@@ -101,13 +100,30 @@ class DmacRos2Node : public rclcpp::Node {
 
     boost::thread(boost::bind(&boost::asio::io_service::run, &io_service));
   }
+
+  // Need to expose this node to spin it with a multi-threaded executor (ROS2).
+  std::shared_ptr<rclcpp::Node> parser_node() {
+    if (s_ == nullptr) return nullptr;
+    return s_->parser_node();
+  }
+
+ private:
+  dmac::tcp_client* s_ = nullptr;
 };
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<DmacRos2Node>();
   node->LaunchConnectionThread();
   RCLCPP_INFO_STREAM(node->get_logger(), "Spinning... ");
-  rclcpp::spin(node);
+
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(node);
+
+  std::shared_ptr<rclcpp::Node> parser_node = node->parser_node();
+  if (parser_node != nullptr) executor.add_node(parser_node);
+
+  executor.spin();
+
   return 0;
 }
