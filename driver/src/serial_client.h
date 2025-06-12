@@ -103,10 +103,13 @@ class serial_client : public dmac::comm_middlemen {
       return;
     }
 
-    std::string portname;
+    std::string portname = "/dev/ttyUSB0";
+    // TODO: tonioteran - Figure this out for ROS2. Using default for now.
+    /*
     ros::param::param<std::string>(
         ros::this_node::getName() + "/modem_config/serial_config/port",
         portname, "/dev/ttyUSB0");
+    */
 
     port_ = serial_port_ptr(new boost::asio::serial_port(io_service_));
     boost::system::error_code ec;
@@ -119,10 +122,13 @@ class serial_client : public dmac::comm_middlemen {
       return;
     }
 
-    int baudrate;
+    int baudrate = 19200;
+    // TODO: tonioteran - Figure this out for ROS2. Using default for now.
+    /*
     ros::param::param<int>(
         ros::this_node::getName() + "/modem_config/serial_config/baudrate",
         baudrate, 19200);
+    */
     port_->set_option(boost::asio::serial_port_base::baud_rate(baudrate));
     port_->set_option(boost::asio::serial_port_base::character_size(8));
     port_->set_option(boost::asio::serial_port_base::stop_bits(

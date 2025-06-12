@@ -156,7 +156,7 @@ class parser : public dmac::abstract_parser {
     } while (after > 0 && after != before);
   }
 
-  void sendCallback(const dmac::DMACPayload::ConstPtr &msg) {
+  void sendCallback(const DMACPayload::ConstPtr &msg) {
     if (!ini_.ready()) {
       RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"),
                           "Driver not yet initialized");
@@ -228,7 +228,7 @@ class parser : public dmac::abstract_parser {
     }
   }
 
-  void syncCallback(const dmac::DMACSync::ConstPtr &msg,
+  void syncCallback(const DMACSync::ConstPtr &msg,
                     bool privilege) { /* privilege true for initialiser */
     if (!msg->report.empty()) {
       /* ignore published by oursleves modem response */
@@ -265,9 +265,7 @@ class parser : public dmac::abstract_parser {
     }
   }
 
-  void syncCallback(const dmac::DMACSync::ConstPtr &msg) {
-    syncCallback(msg, false);
-  }
+  void syncCallback(const DMACSync::ConstPtr &msg) { syncCallback(msg, false); }
 
   void handle_answer_timeout(const boost::system::error_code &error) {
     if (error == boost::asio::error::operation_aborted) {

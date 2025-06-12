@@ -185,6 +185,7 @@ class initializer {
   dmac::abstract_parser *parser_;
   dmac::config *config_;
   std::vector<DMACSyncPtr>::iterator initializer_it;
+  rclcpp::Clock clock_;
 
   conf_state transition(conf_event event) {
     conf_state next_state = state_;
@@ -290,7 +291,7 @@ class initializer {
     switch (event) {
       case INTERNAL: {
         DMACSyncPtr sync(new DMACSync);
-        sync->header.stamp = ros::Time::now();
+        sync->header.stamp = clock_.now();
         sync->command = "?MODE";
         parser_->syncCallback(sync, true);
         break;
@@ -327,7 +328,7 @@ class initializer {
       case ERROR: {
         parser_->ctrl(dmac::MODE, dmac::DMAC_COMMAND_MODE);
         DMACSyncPtr sync(new DMACSync);
-        sync->header.stamp = ros::Time::now();
+        sync->header.stamp = clock_.now();
         sync->command = "?MODE";
         sync->parameters = "";
         parser_->ctrl(dmac::WAITSYNC, dmac::WAITSYNC_NO);
@@ -358,7 +359,7 @@ class initializer {
           if (sync->command.compare("?MODE") == 0 &&
               sync->report.compare(0, 2, "AT") == 0) {
             DMACSyncPtr sync(new DMACSync);
-            sync->header.stamp = ros::Time::now();
+            sync->header.stamp = clock_.now();
             sync->command = "O";
             sync->parameters = "";
             parser_->syncCallback(sync, true);

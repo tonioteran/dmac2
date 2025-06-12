@@ -60,31 +60,47 @@ class config {
   }
 
   void load(void) {
+    // TODO: tonioteran - Figure out how to do this in ROS2. Using default.
+    /*
     ros::param::param<bool>(node_name_ + "/modem_config/hasAHRS", hasAHRS_,
                             false);
-    RCLCPP_INFO_STREAM("hasAHRS: " << hasAHRS_);
+    */
+    hasAHRS_ = false;
+    RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"),
+                       "hasAHRS: " << hasAHRS_);
 
     /* default: @ZX1, @ZU1, !C1? */
     pushSync("@CTRL");
 
     int source_level, local_address;
+    // TODO: tonioteran - Figure out how to do this in ROS2. Using default.
+    /*
     ros::param::param<int>(node_name_ + "/modem_config/source_level",
                            source_level, 3);
+    */
+    source_level = 3;
+
     pushSync("!L", boost::lexical_cast<std::string>(source_level));
 
+    // TODO: tonioteran - Figure out how to do this in ROS2. Skipping.
+    /*
     if (ros::param::has(node_name_ + "/modem_config/local_address")) {
       ros::param::param<int>(node_name_ + "/modem_config/local_address",
-                             local_address, 0 /**/);
+                             local_address, 0);
 
       pushSync("!AL", boost::lexical_cast<std::string>(local_address));
     }
+    */
 
     std::map<std::string, std::string> ini;
+    // TODO: tonioteran - Figure out how to do this in ROS2. Skipping.
+    /*
     if (ros::param::has(node_name_ + "/modem_config/initialiser")) {
       ros::param::get(node_name_ + "/modem_config/initialiser", ini);
     } else {
       ros::param::get(node_name_ + "/modem_config/initializer", ini);
     }
+    */
     std::map<std::string, std::string>::iterator mit;
 
     /* add ctrl, local address */
