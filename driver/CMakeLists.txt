@@ -15,9 +15,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(dmac2_interfaces REQUIRED)
 find_package(Boost COMPONENTS thread system regex REQUIRED)
 
-# TODO: this seems to be a ROS1 thing...
-#find_package(message_generation REQUIRED)
-
+# Just a single executable here.
 add_executable(dmac src/dmac_driver.cpp)
 target_link_libraries(dmac Boost::thread Boost::regex)
 ament_target_dependencies(dmac rclcpp std_msgs dmac2_interfaces)
