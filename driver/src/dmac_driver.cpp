@@ -47,82 +47,66 @@ std::string to_string(const T& n) {
 }
 }  // namespace std
 
-class DmacRos2Node : public rclcpp::Node {
- public:
-  DmacRos2Node() : Node("dmac2_node") {}
-
-  void LaunchConnectionThread() {
-    std::string IP, type;
-    int port;
-
-    dmac::config config(get_name());
-
-    // TODO: Figure out how to read from param server in ROS2 cpp. Use default.
-    // ros::param::param<std::string>(
-    // ros::this_node::getName() + "/modem_config/connection_type", type,
-    // "TCP/IP");
-    type = "TCP/IP";
-
-    boost::asio::io_service io_service;
-
-    if (type == "TCP/IP") {
-      // TODO: Figure out how to read from param server in ROS2 cpp. Use
-      // default.
-      // ros::param::param<std::string>(
-      // ros::this_node::getName() + "/modem_config/tcp_config/ip", IP,
-      // "192.168.0.137");
-      IP = "192.168.0.137";
-
-      // TODO: Figure out how to read from param server in ROS2 cpp. Use
-      // default.
-      // ros::param::param<int>(
-      // ros::this_node::getName() + "/modem_config/tcp_config/port", port,
-      // 9200);
-      port = 9200;
-
-      RCLCPP_INFO_STREAM(get_logger(),
-                         "Connecting to IP: " << IP << ", port: " << port);
-
-      // Listen for TCP connections in background thread.
-      tcp::resolver resolver(io_service);
-      tcp::resolver::query query(IP, std::to_string(port));
-      tcp::resolver::iterator iterator = resolver.resolve(query);
-
-      s_ = new dmac::tcp_client(io_service, iterator, config);
-    } else if (type == "SERIAL") {
-      RCLCPP_INFO_STREAM(get_logger(), "Connecting to serial modem");
-      dmac::serial_client* s = new dmac::serial_client(io_service, config);
-    } else {
-      RCLCPP_ERROR_STREAM(get_logger(),
-                          "Unsupported connection type: " << type);
-      return;
-    }
-
-    boost::thread(boost::bind(&boost::asio::io_service::run, &io_service));
-  }
-
-  // Need to expose this node to spin it with a multi-threaded executor (ROS2).
-  std::shared_ptr<rclcpp::Node> parser_node() {
-    if (s_ == nullptr) return nullptr;
-    return s_->parser_node();
-  }
-
- private:
-  dmac::tcp_client* s_ = nullptr;
-};
-
 int main(int argc, char* argv[]) {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<DmacRos2Node>();
-  node->LaunchConnectionThread();
-  RCLCPP_INFO_STREAM(node->get_logger(), "Spinning... ");
 
+
+  std::string IP, type;
+  int port;
+
+  dmac::config config("dmac2_node");
+
+  // TODO: Figure out how to read from param server in ROS2 cpp. Use default.
+  // ros::param::param<std::string>(
+  // ros::this_node::getName() + "/modem_config/connection_type", type,
+  // "TCP/IP");
+  type = "TCP/IP";
+
+  boost::asio::io_service io_service;
   rclcpp::executors::MultiThreadedExecutor executor;
-  executor.add_node(node);
+  if (type == "TCP/IP") {
+    // TODO: Figure out how to read from param server in ROS2 cpp. Use
+    // default.
+    // ros::param::param<std::string>(
+    // ros::this_node::getName() + "/modem_config/tcp_config/ip", IP,
+    // "192.168.0.137");
+    //IP = "192.168.0.137";
+    IP = "192.168.0.206";  // LoLo
 
-  std::shared_ptr<rclcpp::Node> parser_node = node->parser_node();
-  if (parser_node != nullptr) executor.add_node(parser_node);
+    // TODO: Figure out how to read from param server in ROS2 cpp. Use
+    // default.
+    // ros::param::param<int>(
+    // ros::this_node::getName() + "/modem_config/tcp_config/port", port,
+    // 9200);
+    port = 9200;
 
+    RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"),
+                       "Connecting to IP: " << IP << ", port: " << port);
+
+    // Listen for TCP connections in background thread.
+    tcp::resolver resolver(io_service);
+    tcp::resolver::query query(IP, std::to_string(port));
+    tcp::resolver::iterator iterator = resolver.resolve(query);
+
+    dmac::tcp_client* s = new dmac::tcp_client(io_service, iterator, config);
+    if (s != nullptr && s->parser_node() != nullptr) {
+      RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"),
+                         "Adding the parser node for TCP/IP mode");
+      executor.add_node(s->parser_node());
+    }
+  } else if (type == "SERIAL") {
+    RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"),
+                       "Connecting to serial modem");
+    dmac::serial_client* s = new dmac::serial_client(io_service, config);
+  } else {
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("dmac2_logger"),
+                        "Unsupported connection type: " << type);
+    return -1;
+  }
+
+  boost::thread(boost::bind(&boost::asio::io_service::run, &io_service));
+
+  RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"), "Spinning... ");
   executor.spin();
 
   return 0;
