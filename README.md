@@ -141,6 +141,29 @@ niklas@niklas-lolo-laptop:~/ros2_ws$ ros2 run dmac2 dmac
 [INFO] [1749807148.093737795] [dmac2_logger]: sending +++AT@CTRL
 ```
 
+- Sample measurement fix:
 
+```
+---
+header:
+  stamp:
+    sec: 1749816072
+    nanosec: 536980805
+  frame_id: usbl
+source_id: 2
+source_name: '2'
+type: 2
+relative_position:
+  x: 1.5884
+  y: -4.221
+  z: -0.2256
+range: 4.522500038146973
+bearing: -1.210878610610962
+elevation: -0.04998081177473068
+sound_speed: 1500.0
+bearing_raw: -1.5738557577133179
+elevation_raw: -0.04714258387684822
+---
+```
 
 
