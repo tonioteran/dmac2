@@ -38,48 +38,38 @@
 #include "serial_client.h"
 #include "tcp_client.h"
 
-namespace std {
-template <typename T>
-std::string to_string(const T& n) {
-  std::ostringstream s;
-  s << n;
-  return s.str();
-}
-}  // namespace std
+namespace {
+
+// Parameter names.
+constexpr char kTypeParam[] = "dmac2/modem_config/connection_type";
+constexpr char kIpParam[] = "dmac2/modem_config/tcp_config/ip";
+constexpr char kPortParam[] = "dmac2/modem_config/tcp_config/port";
+
+// Default parameter values.
+constexpr char kDefaultType[] = "TCP/IP";
+constexpr char kDefaultIp[] = "192.168.0.206";
+constexpr int kDefaultPort = 9200;
+
+}  // namespace
 
 int main(int argc, char* argv[]) {
   rclcpp::init(argc, argv);
 
-
-  std::string IP, type;
-  int port;
-
   dmac::config config("dmac2_node");
 
-  // TODO: Figure out how to read from param server in ROS2 cpp. Use default.
-  // ros::param::param<std::string>(
-  // ros::this_node::getName() + "/modem_config/connection_type", type,
-  // "TCP/IP");
-  type = "TCP/IP";
+  // Create a node just to read configuration parameters.
+  rclcpp::Node param_node("param_node");
+  param_node.declare_parameter(kTypeParam, kDefaultType);
+  param_node.declare_parameter(kIpParam, kDefaultIp);
+  param_node.declare_parameter(kPortParam, kDefaultPort);
 
   boost::asio::io_service io_service;
   rclcpp::executors::MultiThreadedExecutor executor;
+
+  const std::string type = param_node.get_parameter(kTypeParam).as_string();
   if (type == "TCP/IP") {
-    // TODO: Figure out how to read from param server in ROS2 cpp. Use
-    // default.
-    // ros::param::param<std::string>(
-    // ros::this_node::getName() + "/modem_config/tcp_config/ip", IP,
-    // "192.168.0.137");
-    //IP = "192.168.0.137";
-    IP = "192.168.0.206";  // LoLo
-
-    // TODO: Figure out how to read from param server in ROS2 cpp. Use
-    // default.
-    // ros::param::param<int>(
-    // ros::this_node::getName() + "/modem_config/tcp_config/port", port,
-    // 9200);
-    port = 9200;
-
+    const std::string IP = param_node.get_parameter(kIpParam).as_string();
+    const int port = param_node.get_parameter(kPortParam).as_int();
     RCLCPP_INFO_STREAM(rclcpp::get_logger("dmac2_logger"),
                        "Connecting to IP: " << IP << ", port: " << port);
 
