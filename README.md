@@ -2,6 +2,21 @@
 
 ROS2 driver for the Evologics Underwater Modems
 
+## Main changes to the original `dmac` driver for ROS2 support
+
+  - Pass in a `rclcpp::get_logger("dmac2_logger")` logger to all `STREAM` calls
+  - Created a separte message "interface" with all custom messages as its own
+    cmake project (see `./interfaces/` dir)
+  - `NodeHandle`s are no longer a thing in ROS2, so had to refactor the TCP
+    parser to instead contain a full node inside, and update the pub/sub
+    components
+      - Note that due to the lack of a centralized `roscore` concept in ROS2, we
+        have to surface this node all the way up to the main executable portion
+        such that we can spin it up using a multi-threaded executor
+  - Parameter parsing now requires its own node, so we created one to do that at
+    the `main` level, which we need not sping.
+  - Updated the CMakeLists to be as explicit and clean as possible
+
 ## Basic commands
 
  - `ATC` - command mode
